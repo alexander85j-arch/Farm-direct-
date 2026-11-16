@@ -13,17 +13,18 @@ input,select{width:100%;font:inherit;color:var(--ink);background:var(--card);bor
 </style></head><body>
 <header><b style="font-size:1.3rem">Farm Direct</b><nav><button data-t="shop" class="on">Shop</button><button data-t="track">Track</button><button data-t="sell">Sell</button><button data-t="admin" id="adm" hidden>Admin</button></nav></header>
 <main id="app"></main>
+<p id="dbg" class="mute" style="max-width:900px;margin:0 auto;padding:0 16px;word-break:break-all"></p>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const SUPABASE_URL="https://zpxtbugfsywulvrijipb.supabase.co",SUPABASE_ANON_KEY="sb_publishable_tGwMptZbsqrsOzNal5cfjA_NPOwj22H";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY),$=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const money=n=>"₦"+Math.round(n).toLocaleString("en-NG");
-let tab="shop",P=[],F={},C=[],S={},cart={},user=null,me=null,mine=[],msg="",R=[],Bn=[],O=[],BP=[],MO=[],TR=null;
+let tab="shop",P=[],F={},C=[],S={},cart={},user=null,me=null,mine=[],msg="",R=[],Bn=[],O=[],BP=[],MO=[],TR=null,dbg="",dbl="-";
 async function load(){const[a,b,c,d]=await Promise.all([sb.from("products").select("*").eq("live",true),sb.from("public_farmers").select("*"),sb.from("categories").select("*"),sb.from("settings").select("*").single()]);
- P=(a.data||[]).sort((x,y)=>(new Date(y.boost_until)>new Date())-(new Date(x.boost_until)>new Date()));F=Object.fromEntries((b.data||[]).map(f=>[f.id,f]));C=c.data||[];S=d.data||{};
- const{data:{session}}=await sb.auth.getSession();user=session?.user||null;me=null;mine=[];
- if(user){me=(await sb.from("profiles").select("*").eq("id",user.id).maybeSingle()).data;mine=(await sb.from("products").select("*").eq("farmer_id",user.id).order("created_at",{ascending:false})).data||[];if(me)MO=(await sb.from("orders").select("*").eq("farmer_id",user.id).order("created_at",{ascending:false})).data||[];if(me?.role=="admin")await adminLoad()}
+ P=(a.data||[]).sort((x,y)=>(new Date(y.boost_until)>new Date())-(new Date(x.boost_until)>new Date()));F=Object.fromEntries((b.data||[]).map(f=>[f.id,f]));C=c.data||[];S=d.data||{};dbg=[["products",a],["farmers",b],["categories",c],["settings",d]].filter(x=>x[1].error).map(x=>x[0]+": "+x[1].error.message).join("; ");
+ const{data:{session}}=await sb.auth.getSession();user=session?.user||null;me=null;mine=[];dbg+=" | session: "+(user?user.email:"none");
+ if(user){const pr=await sb.from("profiles").select("*").eq("id",user.id).maybeSingle();me=pr.data;dbg+=" | profile: "+(pr.error?pr.error.message:(me?"found":"none"));mine=(await sb.from("products").select("*").eq("farmer_id",user.id).order("created_at",{ascending:false})).data||[];if(me)MO=(await sb.from("orders").select("*").eq("farmer_id",user.id).order("created_at",{ascending:false})).data||[];if(me?.role=="admin")await adminLoad()}
  render()}
 const call=async body=>{const{data,error}=await sb.functions.invoke("smart-responder",{body});if(error){let m=error.message;try{m=(await error.context.json()).error||m}catch(e){}throw new Error(m)}if(data?.error)throw new Error(data.error);return data};
 const total=()=>Object.entries(cart).reduce((a,[id,n])=>a+n*(P.find(p=>p.id==id)?.price||0),0);
@@ -58,7 +59,7 @@ const wa=p=>"https://wa.me/234"+String(p).slice(-10);
 const banner=()=>{const c=new URLSearchParams(location.search).get("code");return c?`<div class="box"><b>Thank you!</b> Your order code is <b>${esc(c)}</b>. Use it with your phone number in the Track tab.</div>`:""};
 function ordersBox(){return `<h2 style="margin-top:22px">Orders for you</h2>${MO.map(o=>{const pend=o.pay_method=="online"&&!o.paid,s=o.status;return `<div class="box"><div class="row"><b>${esc(o.buyer_name)}</b><span class="mute">${pend?"Awaiting payment":STT[s]}</span></div><p class="mute"><a href="${wa(o.buyer_phone)}" target="_blank" rel="noopener">${esc(o.buyer_phone)} (WhatsApp)</a><br>${o.lines.map(l=>esc(l.t)).join("<br>")}<br>Deliver to ${esc(o.address)}<br>${o.pay_method=="online"?"Paid online, commission "+money(o.commission)+" deducted":"Pay on delivery, collect the cash"}</p><div class="row"><b>${money(o.total-o.commission)}</b><span>${pend||s=="delivered"||s=="cancelled"?"":s=="new"?`<button class="btn sm" data-st="${o.id}|accepted">Accept</button> <button class="del" data-st="${o.id}|cancelled">Can't fulfil</button>`:`<button class="btn sm" data-st="${o.id}|delivered">Mark delivered</button>`}</span></div><button class="del" data-repb="${o.id}" style="font-size:.78rem;margin-top:6px">Report buyer</button></div>`}).join("")||"<p class='mute'>Orders will show up here.</p>"}`}
 function track(){const sv=localStorage.getItem("fd_code")||"";$("#app").innerHTML=`<h1>Track your order.</h1><form id="tr" class="box"><input name="phone" type="tel" placeholder="Phone number you ordered with" required><input name="code" placeholder="Order code" value="${esc(sv)}" required>${msg?`<p class="mute" role="alert">${esc(msg)}</p>`:""}<button class="btn">Show my order</button></form>${(TR||[]).map(o=>`<div class="box"><div class="row"><b>${esc(o.farm)}</b><span class="mute">${o.pay_method=="online"&&!o.paid?"Awaiting payment":STT2[o.status]}</span></div><p class="mute">${o.lines.map(l=>esc(l.t)).join("<br>")}</p><div class="row"><span class="mute">${o.pay_method=="online"?"Paid online":"Pay on delivery"}</span><b>${money(o.total)}</b></div></div>`).join("")}`}
-function render(){document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==tab));$("#adm").hidden=me?.role!="admin";tab=="shop"?shop():tab=="track"?track():tab=="admin"?admin():sell()}
+function render(){$("#dbg").textContent="Status: "+dbl+" | "+dbg;document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==tab));$("#adm").hidden=me?.role!="admin";tab=="shop"?shop():tab=="track"?track():tab=="admin"?admin():sell()}
 document.addEventListener("click",async e=>{const d=e.target.closest("button")?.dataset||{};
  if(d.t){tab=d.t;msg="";render()}else if(d.inc){cart[d.inc]=(cart[d.inc]||0)+1;shop()}else if(d.dec){if(--cart[d.dec]<=0)delete cart[d.dec];shop()}
  else if(d.ban)banAct(d.ban)
@@ -70,7 +71,7 @@ document.addEventListener("click",async e=>{const d=e.target.closest("button")?.
  else if("out" in d){await sb.auth.signOut();load()}
  else if(d.fee){msg="";try{const r=await call({action:"fee",kind:d.fee,product_id:d.p});location.href=r.link}catch(x){msg=x.message;sell()}}});
 document.addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target)),id=e.target.id;msg="";
- if(id=="login"){const up=e.submitter?.value=="up",em=String(f.email).trim().toLowerCase(),pw=String(f.password).replace(/\s+$/,""),r=up?await sb.auth.signUp({email:em,password:pw}):await sb.auth.signInWithPassword({email:em,password:pw});msg=r.error?r.error.message:(up&&!r.data.session?"Account created. Check your email to confirm it, then log in.":"");if(!r.error&&r.data.session)await load();else sell()}
+ if(id=="login"){const up=e.submitter?.value=="up",em=String(f.email).trim().toLowerCase(),pw=String(f.password).replace(/\s+$/,""),r=up?await sb.auth.signUp({email:em,password:pw}):await sb.auth.signInWithPassword({email:em,password:pw});dbl=r.error?r.error.message+" ["+r.error.status+"]":(r.data.session?"login ok":"no session");msg=r.error?r.error.message:(up&&!r.data.session?"Account created. Check your email to confirm it, then log in.":"");if(!r.error&&r.data.session)await load();else sell()}
  if(id=="prof"){const{error}=await sb.from("profiles").insert({id:user.id,farm:f.farm,town:f.town,phone:f.phone});if(error)msg=error.message;await load()}
  if(id=="add"){const{error}=await sb.from("products").insert({farmer_id:user.id,name:f.name,category:f.category,price:+f.price,unit:f.unit,stock:+f.stock});if(error)msg=error.message;await load();tab="sell";sell()}
  if(id=="tr"){try{TR=await call({action:"track",phone:f.phone,code:f.code})}catch(x){msg=x.message;TR=null}track()}
