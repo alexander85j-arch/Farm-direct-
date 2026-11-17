@@ -71,7 +71,7 @@ document.addEventListener("click",async e=>{const d=e.target.closest("button")?.
  else if("out" in d){await sb.auth.signOut();load()}
  else if(d.fee){msg="";try{const r=await call({action:"fee",kind:d.fee,product_id:d.p});location.href=r.link}catch(x){msg=x.message;sell()}}});
 document.addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target)),id=e.target.id;msg="";
- if(id=="login"){const up=e.submitter?.value=="up",em=String(f.email).trim().toLowerCase(),pw=String(f.password).replace(/\s+$/,""),r=up?await sb.auth.signUp({email:em,password:pw}):await sb.auth.signInWithPassword({email:em,password:pw});dbl=r.error?r.error.message+" ["+r.error.status+"]":(r.data.session?"login ok":"no session");msg=r.error?r.error.message:(up&&!r.data.session?"Account created. Check your email to confirm it, then log in.":"");if(!r.error&&r.data.session)await load();else sell()}
+ if(id=="login"){const up=e.submitter?.value=="up",em=String(f.email).trim().toLowerCase(),pw=String(f.password).replace(/\s+$/,""),r=up?await sb.auth.signUp({email:em,password:pw}):await sb.auth.signInWithPassword({email:em,password:pw});dbl=r.error?r.error.message+" ["+r.error.status+"]":(r.data.session?"login ok":"no session");$("#dbg").textContent="Status: "+dbl+" | sent email "+JSON.stringify(em)+", password length "+pw.length+", project "+SUPABASE_URL.slice(8,28)+", "+(up?"create":"login")+" | "+dbg;msg=r.error?r.error.message:(up&&!r.data.session?"Account created. Check your email to confirm it, then log in.":"");if(!r.error&&r.data.session)await load();else sell()}
  if(id=="prof"){const{error}=await sb.from("profiles").insert({id:user.id,farm:f.farm,town:f.town,phone:f.phone});if(error)msg=error.message;await load()}
  if(id=="add"){const{error}=await sb.from("products").insert({farmer_id:user.id,name:f.name,category:f.category,price:+f.price,unit:f.unit,stock:+f.stock});if(error)msg=error.message;await load();tab="sell";sell()}
  if(id=="tr"){try{TR=await call({action:"track",phone:f.phone,code:f.code})}catch(x){msg=x.message;TR=null}track()}
@@ -81,5 +81,5 @@ document.addEventListener("submit",async e=>{e.preventDefault();const f=Object.f
  if(id=="co"){try{const r=await call({action:"checkout",items:Object.entries(cart).map(([id,qty])=>({id,qty})),...f});cart={};try{localStorage.setItem("fd_code",r.code)}catch(x){}if(r.link)location.href=r.link;else{$("#app").innerHTML=`<div class="box"><h2>Order placed</h2><p>Each farmer will contact you on ${esc(f.phone)}. Pay on delivery.</p><p>Your order code is <b>${esc(r.code)}</b>. Use it with your phone number in the Track tab.</p></div>`;load()}}catch(x){msg=x.message;shop()}}});
 {const c=new URLSearchParams(location.search).get("code");if(c)try{localStorage.setItem("fd_code",c)}catch(x){}}
 window.addEventListener("unhandledrejection",e=>alert("Error: "+(e.reason&&e.reason.message||e.reason)));window.addEventListener("error",e=>alert("Error: "+e.message));
-sb.auth.onAuthStateChange(()=>load());load();
+sb.auth.onAuthStateChange(()=>{setTimeout(load,0)});load();
 </script></body></html>
