@@ -1,5 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Farm Direct</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#054924"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--bg:#f1f6ee;--card:#fff;--ink:#17281c;--mute:#5d7263;--line:#d9e4d4;--g:#1f5a32;--on:#fff}
 @media(prefers-color-scheme:dark){:root{--bg:#0f1a12;--card:#172619;--ink:#e8f1e6;--mute:#93a998;--line:#26392a;--g:#6fce8a;--on:#0f1a12}}
@@ -12,7 +13,8 @@ input,select{width:100%;font:inherit;color:var(--ink);background:var(--card);bor
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}.mute{color:var(--mute);font-size:.88rem}.big{font-size:2.4rem;text-align:center}h1{font-size:1.9rem;line-height:1.1}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px}.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;padding:6px 14px;border-radius:99px;cursor:pointer}.chip.on{background:var(--g);color:var(--on);border-color:var(--g)}
 </style></head><body>
-<header><b style="font-size:1.3rem">Farm Direct</b><nav><button data-t="shop" class="on">Shop</button><button data-t="track">Track</button><button data-t="sell">Sell</button><button data-t="admin" id="adm" hidden>Admin</button></nav></header>
+<header><b style="font-size:1.3rem;display:flex;align-items:center;gap:8px"><img src="icon-192.png" alt="" style="height:34px;width:34px;border-radius:8px">Farm Direct</b><nav><button data-t="shop" class="on">Shop</button><button data-t="track">Track</button><button data-t="sell">Sell</button><button data-t="admin" id="adm" hidden>Admin</button></nav></header>
+<div style="max-width:900px;margin:0 auto;padding:0 16px"><button id="ins" class="del" hidden>📲 Install the Farm Direct app</button></div>
 <main id="app"></main>
 <p id="dbg" class="mute" style="display:none;max-width:900px;margin:0 auto;padding:0 16px;word-break:break-all"></p>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -99,6 +101,8 @@ document.addEventListener("submit",async e=>{e.preventDefault();const f=Object.f
  if(id=="co"){try{const r=await call({action:"checkout",items:Object.entries(cart).filter(([id])=>P.find(p=>p.id==id)?.farmer_id==cf).map(([id,qty])=>({id,qty})),...f});Object.keys(cart).forEach(id=>{if(P.find(p=>p.id==id)?.farmer_id==cf)delete cart[id]});try{localStorage.setItem("fd_code",r.code)}catch(x){}if(r.link)location.href=r.link;else{ok2={code:r.code,phone:f.phone,cod:true};cf=null;await load()}}catch(x){msg=x.message;shop()}}});
 {const c=new URLSearchParams(location.search).get("code");if(c)try{localStorage.setItem("fd_code",c)}catch(x){}}
 document.addEventListener("change",e=>{if(e.target.id=="tf"){ft=e.target.value;shop()}});
+let inst=null;window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();inst=e;$("#ins").hidden=false});$("#ins").onclick=async()=>{if(inst){inst.prompt();await inst.userChoice;inst=null;$("#ins").hidden=true}};
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 window.addEventListener("unhandledrejection",e=>alert("Error: "+(e.reason&&e.reason.message||e.reason)));window.addEventListener("error",e=>alert("Error: "+e.message));
 sb.auth.onAuthStateChange(()=>{setTimeout(load,0)});load();
 </script></body></html>
